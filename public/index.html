@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Room</title>
+</head>
+<body>
+    <h1>Interview Room</h1>
+    <div id="videos">
+        <video id="localVideo" autoplay muted></video>
+    </div>
+    <input id="roomId" placeholder="Enter Room ID">
+    <button id="joinRoomBtn">Join Room</button>
+    <div id="messages"></div>
+    <input id="messageInput" placeholder="Type a message">
+    <button id="sendBtn">Send</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
