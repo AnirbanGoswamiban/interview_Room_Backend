@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000", // Frontend origin
+        origin: ["http://localhost:3000", "https://interview-room-frontend.vercel.app"],
         methods: ["GET", "POST"],
     },
 });
