@@ -24,8 +24,8 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     // Create or join room
-    socket.on('joinRoom', (data,res) => { 
-        let {roomId,name,type} = data
+    socket.on('joinRoom', (data, res) => {
+        let { roomId, name, type } = data;
 
         if (!roomId || !name) {
             return res({
@@ -33,8 +33,8 @@ io.on('connection', (socket) => {
                 message: 'Invalid room ID or name',
             });
         }
-        if(type === "join"){
-            if(!rooms[roomId]){
+        if (type === "join") {
+            if (!rooms[roomId]) {
                 return res({
                     success: false,
                     message: 'Invalid room ID',
@@ -42,113 +42,121 @@ io.on('connection', (socket) => {
             }
         }
 
-            let usersArray = rooms[roomId] || []
-            let flag = false
-            usersArray.forEach(element => {
-                if(element.socketId === socket.id){
-                    flag = true
-                }
-            });
-            if(flag){
-                return res({
-                    success: true,
-                    message: 'Already in a room',
-                });
+        let usersArray = rooms[roomId] || [];
+        let flag = false;
+
+        usersArray.forEach(element => {
+            if (element.socketId === socket.id) {
+                flag = true;
             }
-        
-        // if roomId is not present create one
+        });
+
+        if (flag) {
+            return res({
+                success: true,
+                message: 'Already in a room',
+            });
+        }
+
+        // If roomId is not present, create one
         if (!rooms[roomId]) {
             rooms[roomId] = [];
         }
-        rooms[roomId].push({name:name,socketId:socket.id});
-        socket.join(roomId);
-        console.log(`User ${socket.id} joined room ${roomId}`);
 
-        socket.to(roomId).emit('userJoined', {name:name,socketId:socket.id});
-        socket.emit('allUsers', rooms[roomId].filter(id => id.socketId !== socket.id));
+        // Add the user with their name and socketId
+        rooms[roomId].push({ name: name, socketId: socket.id });
+        socket.join(roomId);
+        console.log(`User ${name} (${socket.id}) joined room ${roomId}`);
+
+        socket.to(roomId).emit('userJoined', { name: name, socketId: socket.id });
+        socket.emit('allUsers', rooms[roomId].filter(user => user.socketId !== socket.id));
+
         return res({
             success: true,
             message: `Successfully joined room`,
             roomUsers: rooms[roomId].filter(user => user.socketId !== socket.id),
-            roomId:roomId,
-            name:name
+            roomId: roomId,
+            name: name
         });
     });
 
     // Text message handling
-    socket.on('sendMessage', ({ roomId, message },res) => {
-        // console.log(roomId,message)
-        socket.to(roomId).emit('receiveMessage', { message:message, sender: socket.id });
+    socket.on('sendMessage', ({ roomId, message }, res) => {
+        socket.to(roomId).emit('receiveMessage', { message: message, sender: socket.id });
         return res({
-            success:true
-        })
+            success: true
+        });
     });
 
-      // Listen for code changes
-  socket.on('codeChange', ({roomId,data},callback) => {
-    // console.log(roomId,data)
-    socket.to(roomId).emit('codeUpdate', data);
-    if (callback) {
-        callback({
-          success: true,
-        });
-      }
-  });
+    // Listen for code changes
+    socket.on('codeChange', ({ roomId, data }, callback) => {
+        socket.to(roomId).emit('codeUpdate', data);
+        if (callback) {
+            callback({
+                success: true,
+            });
+        }
+    });
 
-  socket.on('languageChange', ({roomId,data},callback) => {
-    // console.log(roomId,data)
-    socket.to(roomId).emit('languageUpdate', data);
-    if (callback) {
-        callback({
-          success: true,
-        });
-      }
-  });
+    socket.on('languageChange', ({ roomId, data }, callback) => {
+        socket.to(roomId).emit('languageUpdate', data);
+        if (callback) {
+            callback({
+                success: true,
+            });
+        }
+    });
 
-
- // Listen for an offer
- socket.on('offer', ({ offer, roomId, targetSocketId, name }) => {
+    // Listen for an offer
+    socket.on('offer', ({ offer, roomId, targetSocketId, name }) => {
         if (targetSocketId) {
             socket.to(targetSocketId).emit('offer', { offer, from: socket.id, name: name });
             console.log(`Offer sent to socket: ${targetSocketId} from ${socket.id}`);
         } else {
             console.warn(`No target socketId provided for room: ${roomId}`);
         }
-});
-    
+    });
 
+    socket.on('answer', ({ answer, to }) => {
+        console.log('Answer from', socket.id);
+        socket.to(to).emit('receiveAnswer', { answer, from: socket.id });
+    });
 
-socket.on('answer', ({ answer, to }) => {
-    console.log('answer from ',socket.id)
-    socket.to(to).emit('receiveAnswer', { answer, from: socket.id });
-});
+    socket.on('ice-candidate', ({ candidate, to }) => {
+        console.log(candidate, to);
+        socket.to(to).emit('ice-candidate', { candidate, from: socket.id });
+    });
 
-socket.on('ice-candidate', ({candidate, to }) => { 
-    console.log(candidate,to)
-    socket.to(to).emit('ice-candidate', { candidate, from: socket.id });
-});
+    socket.on('streamOffer', ({ offer, to }) => {
+        if (to) {
+            socket.to(to).emit('streamOffer', { offer, from: socket.id });
+            console.log(`Offer sent to socket: ${to} from ${socket.id}`);
+        } else {
+            console.warn(`No target socketId provided for room: ${to}`);
+        }
+    });
 
+    socket.on('streamAnswer', ({ answer, to }) => {
+        console.log('Answer from', socket.id);
+        socket.to(to).emit('streamAnswer', { answer, from: socket.id });
+    });
 
-socket.on('streamOffer', ({ offer, to }) => {
-    if (to) {
-        socket.to(to).emit('streamOffer', { offer, from: socket.id });
-        console.log(`Offer sent to socket: ${to} from ${socket.id}`);
-    } else {
-        console.warn(`No target socketId provided for room: ${to}`);
-    }
-});
-
-socket.on('streamAnswer', ({ answer, to }) => {
-    console.log('answer from ',socket.id)
-    socket.to(to).emit('streamAnswer', { answer, from: socket.id });
-});
-    
-
+    // Handle user disconnection
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         for (const roomId in rooms) {
-            rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-            socket.to(roomId).emit('userLeft', socket.id);
+            const userIndex = rooms[roomId].findIndex(user => user.socketId === socket.id);
+
+            if (userIndex !== -1) {
+                const [removedUser] = rooms[roomId].splice(userIndex, 1);
+                console.log(`User ${removedUser.name} (${socket.id}) left room ${roomId}`);
+                socket.to(roomId).emit('userLeft', { name: removedUser.name, socketId: socket.id });
+
+                // Clean up the room if empty
+                if (rooms[roomId].length === 0) {
+                    delete rooms[roomId];
+                }
+            }
         }
     });
 });
